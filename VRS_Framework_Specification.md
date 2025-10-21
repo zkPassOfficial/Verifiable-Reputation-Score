@@ -277,9 +277,9 @@ Each dimension has a unique **alpha value** that determines the strength of the 
 #### YouTube - 10% of POSY
 | Property | Type | Internal Weight | Cap | Description |
 |----------|------|----------------|-----|-------------|
-| Subscriber Count | Number | 33.3% | 200 | Channel subscribers |
-| Video Count | Number | 33.3% | 20 | Total videos published |
-| Total Views | Number | 33.3% | 10000 | Cumulative video view count |
+| Subscriber Count | Number | 40% | 200 | Channel subscribers |
+| Video Count | Number | 20% | 20 | Total videos published |
+| Total Views | Number | 40% | 10000 | Cumulative video view count |
 
 ---
 
