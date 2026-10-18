@@ -3,9 +3,15 @@
 
 ---
 
+## Status and reading guide
+
+This is a design specification. The repository tracks only two Markdown documents, with no scoring implementation, proof/verifier code, API adapter, configuration, scheduler, build system, tests, or CI. Present-tense descriptions below define the proposal; they are not evidence of a deployed capability or a successful validation. Read the [overview](./README.md) for the repository scope.
+
+The dimension/property tables are retained as design inputs. Production component weights, input validation, time reference/units, external API contract, and privacy/output policy remain unresolved; see [Open decisions](#open-decisions).
+
 ## About VRS
 
-The **Verifiable Reputation Score (VRS)** was first introduced as a proof-based mechanism to recognize authenticity, contribution, and engagement across the zkPass ecosystem. It quantifies how complete and credible your digital identity is across multiple verified data sources, while preserving privacy through zero-knowledge proofs.
+The **Verifiable Reputation Score (VRS)** is proposed as a proof-based mechanism to recognize authenticity, contribution, and engagement across the zkPass ecosystem. It quantifies how complete and credible your digital identity is across multiple verified data sources, while preserving privacy through zero-knowledge proofs.
 
 ### Key Principles
 
@@ -16,10 +22,10 @@ VRS leverages zkPass technology to verify your reputation across platforms witho
 Rather than a single metric, VRS evaluates six distinct dimensions of your digital presence, each measuring different aspects of your online identity and contributions.
 
 **⚖️ Coverage-Penalty Mechanism**
-The framework encourages diversity by applying a mathematical penalty when users provide incomplete coverage across data sources. This prevents gaming the system through single-platform optimization.
+The framework encourages diversity by applying a mathematical penalty when users provide incomplete coverage across data sources. This reduces scores for incomplete coverage; it does not establish protection against manipulation or false/duplicate attestations.
 
 **🌐 Cross-Platform Aggregation**
-VRS aggregates verified credentials from 25+ platforms across social media, financial services, professional networks, learning platforms, and content creation sites.
+The dimension tables propose credentials from 22 distinct platforms (27 platform entries across dimensions) across social media, financial services, professional networks, learning platforms, and content creation sites.
 
 ---
 
@@ -39,7 +45,7 @@ The Verifiable Reputation Score consists of **six core dimensions** plus a **soc
 
 **Total Verifiable Reputation Score Range:** 0 - 100 points
 
-_*Weights are dynamically calculated as `ceil(100 / 7)` per component, ensuring balanced contribution._
+_*The overview uses an illustrative 14% × 6 + 16% allocation. The original `ceil(100 / 7)` rule gives 15% per core dimension and a 10% Yapper remainder. No implementation or authoritative policy is present to resolve this conflict; neither alternative is silently adopted as production behavior._
 
 ---
 
@@ -95,7 +101,7 @@ Multiple Platforms → [Cross-Datasource Weights + Coverage Penalty] → Dimensi
 
 ## Dimension Specifications
 
-Each dimension has a unique **alpha value** that determines the strength of the coverage penalty. Lower alpha values encourage broader platform diversity, while higher alpha values place stronger emphasis on completeness.
+Each dimension has a unique **alpha value** that determines the strength of the coverage penalty. For incomplete weighted coverage between 0 and 1, a larger alpha produces a smaller multiplier and therefore a stronger penalty; lower alpha relaxes that penalty.
 
 | Dimension | Alpha | Penalty Strength | Strategic Implication |
 |-----------|-------|------------------|----------------------|
@@ -287,7 +293,7 @@ Each dimension has a unique **alpha value** that determines the strength of the 
 
 **Alpha:** 1.2 (lower penalty encourages financial diversification)
 
-**Purpose:** Validates financial solvency and asset holdings across cryptocurrency exchanges and payment platforms. Note: Actual amounts are privacy-preserved; only proof of meeting thresholds is verified.
+**Purpose:** Proposed asset-holding signals across cryptocurrency exchanges and payment platforms. Privacy is a design goal. The table below scores numeric values; the relationship between that computation and threshold-only attestations is unresolved, and no proof implementation is included.
 
 ### Cross-Datasource Weights
 
@@ -381,7 +387,7 @@ Numerical values are scored using logarithmic scaling with a saturation point:
 - **Formula:** `log(min(value, cap) + 1) / log(cap + 1)`
 - **Behavior:** Provides diminishing returns as values increase
 - **Cap:** Maximum value that contributes to the score (values above are capped)
-- **Example:** With cap=1000, having 500 followers scores ~70%, while 1000 followers scores 100%
+- **Example:** With cap=1000, having 500 followers scores approximately 89.98%, while 1000 followers scores 100%
 
 ### Boolean (Yes/No)
 Binary verification of property existence or condition:
@@ -414,7 +420,7 @@ Each property within a platform is scored individually using its type-specific f
 
 **Example:** GitHub's "Annual Contributions" with value 150:
 - Type: Number with Cap: 300
-- Score = log(150 + 1) / log(300 + 1) ≈ 0.86 (86%)
+- Score = log(150 + 1) / log(300 + 1) ≈ 0.8791 (87.91%)
 
 ### Step 2: Platform Scoring (Internal Weights)
 Properties within the same platform are combined using **internal weights** to produce a single platform score.
@@ -422,9 +428,9 @@ Properties within the same platform are combined using **internal weights** to p
 **Formula:** `Platform Score = Σ(Property Score × Internal Weight)`
 
 **Example - Binance in POH:**
-- KYC Level = 2 → Score ≈ 90% (internal weight: 70%)
+- KYC Level = 2, cap = 3 → Score = log(3) / log(4) ≈ 79.25% (internal weight: 70%)
 - Account Age = 1.5 years → Score ≈ 60% (internal weight: 30%)
-- **Binance Platform Score = (0.90 × 0.70) + (0.60 × 0.30) = 0.81 (81%)**
+- **Binance Platform Score = (0.792481 × 0.70) + (0.60 × 0.30) ≈ 0.734737 (73.47%)**
 
 > **Internal weights** must sum to 100% within each platform.
 
@@ -468,7 +474,7 @@ The penalty encourages users to provide attestations across **multiple platforms
 - Aggregated Score = 0.40 + 0.40 = 0.80
 - Weighted Coverage = 40% + 40% = 80% (missing Instagram's 20%)
 - Coverage Penalty = 0.8^(1.6-1) = 0.8^0.6 ≈ 0.87
-- **Final POA Score = 0.80 × 0.87 × 100 = 70 points**
+- **Final POA Score = 0.80 × 0.8^0.6 × 100 ≈ 69.98 points (70 rounded)**
 
 **If all three platforms were attested:**
 - Aggregated Score = 0.40 + 0.40 + 0.20 = 1.00
@@ -521,36 +527,38 @@ VRS = Σ(Dimension Score × Dimension Weight) + (Yapper Score × Yapper Weight)
 
 ### Component Weights
 
-| Component | Weight Formula | Typical Weight | Contribution Range |
-|-----------|----------------|----------------|-------------------|
-| POA Score | `ceil(100 / 7)` | ~14-15% | 0-15 points |
-| POH Score | `ceil(100 / 7)` | ~14-15% | 0-15 points |
-| POSL Score | `ceil(100 / 7)` | ~14-15% | 0-15 points |
-| POSY Score | `ceil(100 / 7)` | ~14-15% | 0-15 points |
-| POR Score | `ceil(100 / 7)` | ~14-15% | 0-15 points |
-| POC Score | `ceil(100 / 7)` | ~14-15% | 0-15 points |
-| Yapper Score | Remainder | ~15-16% | 0-16 points |
-| **Total VRS** | **100%** | **100%** | **0-100 points** |
+Two conflicting allocations appeared in the original document. Their arithmetic is made explicit here; selection remains a product/design decision.
+
+| Component | Overview/example allocation | Original ceiling-rule allocation |
+|---|---:|---:|
+| Each of POA, POH, POSL, POSY, POR, POC | 14% (0–14 points each) | `ceil(100 / 7)` = 15% (0–15 points each) |
+| Six core dimensions combined | 84% | 90% |
+| Yapper remainder | 16% (0–16 points) | 10% (0–10 points) |
+| Total | 100% | 100% |
+
+Use weights as fractions (14% = 0.14) with component scores in 0–100. Applying 15% to all seven components would total 105%, so it cannot be described as a 100-point allocation without another rule.
 
 ### Yapper Social Score
 
-**Yapper** is an external social reputation metric from the Yapper platform that measures engagement and influence on Twitter/X. It's integrated into VRS as the seventh component:
+**Yapper** is the proposed seventh component. The external service identity, endpoint, authentication, score semantics, and availability have not been verified by this repository. The following are design references, not configured runtime behavior:
 
-- **Data Source:** Yapper API (yapper.io)
+- **Proposed Data Source:** Yapper API (original reference: yapper.io; no adapter included)
 - **Metric:** Total Yapper points earned
-- **Cap:** Configurable via `yap.yaml` (typically ~1000-10000)
+- **Proposed Cap:** The design mentions `yap.yaml` and a range of ~1000–10000; that file is absent and no effective cap is established.
 - **Scoring:** Logarithmic scaling similar to numerical properties
-- **Update Frequency:** Automatically refreshed every 4 hours via scheduled job
+- **Proposed Update Frequency:** Every 4 hours; no scheduled job or deployment configuration is included.
 
 ### Example VRS Calculation
 
-**User Profile:**
-- POA: 70 points (missing Instagram) × 14% = 9.8
-- POH: 85 points (has 4/5 platforms) × 14% = 11.9
-- POSL: 45 points (GitHub only) × 14% = 6.3
-- POSY: 60 points (Twitter + LinkedIn) × 14% = 8.4
+**Illustrative component inputs using the 14% × 6 + 16% allocation:**
+
+These are hypothetical component scores, not a calculation from an attestation set. The original labels claiming POSL=45 from GitHub alone, or POC=55 from two 20%-weighted platforms, were inconsistent with the coverage formula. For example, GitHub alone can contribute at most `100 × 0.4^1.5 ≈ 25.30` POSL points. The inputs below do not assert those coverage patterns.
+- POA: 70 points (rounded POA example above) × 14% = 9.8
+- POH: 85 points × 14% = 11.9
+- POSL: 45 points × 14% = 6.3
+- POSY: 60 points × 14% = 8.4
 - POR: 0 points (no financial attestations) × 14% = 0
-- POC: 55 points (Reddit + Medium) × 14% = 7.7
+- POC: 55 points × 14% = 7.7
 - Yapper: 80 points × 16% = 12.8
 
 **Total VRS = 9.8 + 11.9 + 6.3 + 8.4 + 0 + 7.7 + 12.8 = 56.9 points**
@@ -559,25 +567,25 @@ VRS = Σ(Dimension Score × Dimension Weight) + (Yapper Score × Yapper Weight)
 
 | VRS Range | Tier | Interpretation |
 |-----------|------|----------------|
-| 80-100 | Elite | Highly verified across all dimensions with strong coverage |
-| 60-79 | Advanced | Well-established presence with good multi-platform verification |
-| 40-59 | Intermediate | Moderate verification with room for expansion |
-| 20-39 | Emerging | Limited verification, early stage participation |
-| 0-19 | Minimal | Very limited or single-dimension verification |
+| 80 ≤ score ≤ 100 | Elite | High aggregate score; inspect coverage separately |
+| 60 ≤ score < 80 | Advanced | Well-established presence with good multi-platform verification |
+| 40 ≤ score < 60 | Intermediate | Moderate verification with room for expansion |
+| 20 ≤ score < 40 | Emerging | Limited verification, early stage participation |
+| 0 ≤ score < 20 | Minimal | Very limited or single-dimension verification |
 
 ### Privacy & Zero-Knowledge Proofs
 
-**What VRS Reveals:**
+**Proposed public outputs:**
 - Your aggregate score across dimensions (0-100)
 - Which platforms you've verified (schema IDs)
 - Your relative ranking position
 
-**What VRS Keeps Private:**
+**Proposed private inputs:**
 - Exact values (follower counts, account balances, etc.)
 - Personal identifiable information (names, emails, addresses)
 - Specific transaction details or private account data
 
-All attestations use **zkPass zero-knowledge proof technology**, meaning validators can verify claims without accessing underlying private data. For example, a POR attestation proves "user has >$5000 in Binance" without revealing the exact amount.
+The design proposes zkPass proofs of selected claims, for example a balance threshold. No circuit, verifier, public-input contract, storage/logging policy, or inference analysis is included here. A threshold proof does not by itself define how to calculate the numeric POR score. Published scores, schema IDs, and rankings may disclose information; the documents do not establish an unconditional privacy guarantee.
 
 ---
 
@@ -587,8 +595,21 @@ The **Verifiable Reputation Score (VRS)** is a comprehensive, privacy-preserving
 
 ✅ **Measures multi-dimensional reputation** across 6 core areas of digital identity
 ✅ **Incentivizes platform diversity** through coverage-penalty mechanisms
-✅ **Preserves user privacy** via zero-knowledge proof attestations
-✅ **Prevents gaming** by requiring balanced contributions across dimensions
-✅ **Provides verifiable credentials** for zkPass Pre-TGE reputation campaign
+✅ **Targets limited disclosure** through a proof-based design, subject to implementation and review
+✅ **Penalizes incomplete coverage** according to the stated formula
+✅ **Proposes verifiable credentials** for a zkPass reputation campaign; campaign deployment is not established here
 
 By participating in VRS, users build a holistic, verifiable reputation that reflects their authenticity, contributions, and engagement across the broader digital ecosystem—all while maintaining control over their private data.
+
+
+## Open decisions
+
+Before using this proposal as an executable scoring contract, maintainers need to resolve and version:
+
+1. Component weights: 14% × 6 + 16% versus 15% × 6 + 10%; record an authoritative configuration and expected totals.
+2. Time scoring: the stated October 1, 2025 base date, the evaluation date, units for account age and gamma, and handling future/invalid dates. Worked age examples assume both quantities use years, without choosing the production reference date.
+3. Inputs: admissible ranges (the log example assumes nonnegative values and cap > 0), missing versus false attestations, duplicate/stale attestations, invalid caps, and rounding policy. Round only displayed examples here; do not infer a production rounding rule.
+4. External inputs: Yapper API identity/contract, cap, refresh behavior, caching/failure policy, and implementation location. The named YAML and scheduler are proposals only.
+5. Proof and privacy: what is proven, which outputs become public, how numeric aggregation relates to threshold proofs, and what leakage or identity-linking guarantees are supported.
+
+Documentation arithmetic was recalculated directly from the displayed formulas: followers 89.98%, contributions 87.91%, KYC 79.25%, weighted Binance 73.47%, and POA 69.98%. This checks examples, not a scoring implementation. No project tests, API calls, proof verification, or deployment were performed.
